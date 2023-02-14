@@ -1,5 +1,5 @@
 # from cscore import CameraServer
-# from networktables import NetworkTables
+from networktables import NetworkTables
 import numpy as np
 import cv2
 from grip import GripPipeline
@@ -33,19 +33,15 @@ def get_line_length(line):
 
 
 def main():
-    # left_threshold = 0.20
-    # right_threshold = 0.80
-
     screen_width = 640
     screen_height = 480
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
-    cap.set(cv2.CAP_PROP_EXPOSURE, -4)
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, screen_width)
-
+    
     # ----------------------------
 
     # cserver = CameraServer()
@@ -53,12 +49,10 @@ def main():
     #
     # input_stream = cserver.getVideo()
     # output = cserver.putVideo('Processed', width=screen_width, height=screen_height)
+    # output.putFrame(output_image)
 
-    # zeros = numpy.zeros(
-    #     shape=(screen_height, screen_width, 3), dtype=numpy.uint8)
-
-    # NetworkTables.initialize(server='10.22.64.2')
-    # vision_nt = NetworkTables.getTable('Vision')
+    NetworkTables.initialize(server='10.22.64.2')
+    vision_nt = NetworkTables.getTable('ObjectVision')
 
     pipeline = GripPipeline()
 
@@ -85,6 +79,11 @@ def main():
             con = best_contour.con
             area = best_contour.area
 
+            M = cv2.moments(con)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            center_point = (cX, cY)
+
             hull = cv2.convexHull(con)
             hull_points = []
             for p in hull:
@@ -104,65 +103,42 @@ def main():
             lines.sort(reverse=True, key=get_line_length)
             sides = lines[0:2]
 
-            cross_sections = [LineData(sides[0].p1, sides[1].p2), LineData(sides[0].p2, sides[1].p1)]
+            cross_sections = [LineData(sides[0].p1, sides[1].p2), LineData(
+                sides[0].p2, sides[1].p1)]
             cross_sections.sort(reverse=True, key=get_line_length)
-            
+
             bottom_line = cross_sections[0]
             top_line = cross_sections[1]
-            
-            
 
-            cv2.line(frame, bottom_line.p1, bottom_line.p2, (0, 0, 0), 4)
-            cv2.line(frame, top_line.p1, top_line.p2, (0, 0, 0), 4)
+            cone = {"center": center_point, "top": top_line.center, "baseP1": bottom_line.p1,
+                    "baseC": bottom_line.center, "baseP2": bottom_line.p2}
+            angle = math.trunc(math.atan2(
+                (cone["center"][1] - cone["top"][1]), -(cone["center"][0] - cone["top"][0])) * (180/math.pi))
+            cone["angle"] = angle
 
-            cv2.line(frame, bottom_line.p1, top_line.p1, (0, 0, 0), 4)
-            cv2.line(frame, bottom_line.center, top_line.center, (0, 0, 0), 4)
-            cv2.line(frame, bottom_line.p2, top_line.p2, (0, 0, 0), 4)
+            print("==========================")
+            for key in cone:
+                if (type(cone[key]) == tuple):
+                    vision_nt.putNumberArray(key, cone[key])
+                    print(f"{key}: {cone[key]}")
+                else:
+                    vision_nt.putNumber(key, cone[key])
+                    print(f"{key}: {cone[key]}")
 
-            cv2.circle(frame, top_line.p1, 5, (255, 255, 255), 8)
-            cv2.circle(frame, top_line.center, 5, (255, 255, 255), 8)
-            cv2.circle(frame, top_line.p2, 5, (255, 255, 255), 8)
-
-            cv2.circle(frame, bottom_line.p1, 5, (255, 255, 255), 8)
-            cv2.circle(frame, bottom_line.center, 5, (255, 255, 255), 8)
-            cv2.circle(frame, bottom_line.p2, 5, (255, 255, 255), 8)
+            cv2.arrowedLine(frame, cone["center"], cone["top"], (0, 0, 0), 2)
+            cv2.putText(
+                img=frame,
+                text=f"{angle}",
+                org=cone["center"],
+                fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                fontScale=2.5,
+                color=(255, 255, 255),
+                thickness=3
+            )
 
         cv2.imshow('final', frame)
-        cv2.imshow('dilate', pipeline.cv_dilate_output)
-
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-        # if len(output_data) > 0:
-        #     detection_count = len(output_data)
-        #
-        #     for x in range(len(output_data)):
-        #         (x, y), r = cv2.minEnclosingCircle(output_data[x])
-        #         x = int(x)
-        #         y = int(y)
-        #         r = int(r)
-        #
-        #         if r > biggest_radius:
-        #             biggest_radius = r
-        #             best_detection = {"x": x, "y": y, "r": r}
-        #
-        # if best_detection:
-        #     if 0 < best_detection["x"] < (screen_width * left_threshold):
-        #         heading = -1
-        #     elif best_detection["x"] > (screen_width * right_threshold):
-        #         heading = 1
-        #     else:
-        #         heading = 2
-        #
-        #     # vision_nt.putNumber('heading', heading)
-        #     # vision_nt.putNumber('x', best_detection["x"])
-        #     # vision_nt.putNumber('y', best_detection["y"])
-        #
-        #     cv2.circle(img=output_image, center=(best_detection["x"], best_detection["y"]), radius=best_detection["r"], color=(0, 255, 0), thickness=5)
-        #     print("x:", best_detection["x"], "y:", best_detection["y"], "r:", best_detection["r"], "heading:", heading)
-        #
-        # # vision_nt.putNumber("detectionCount", detection_count)
-        # # output.putFrame(output_image)
 
 
 if __name__ == '__main__':
