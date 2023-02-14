@@ -41,7 +41,7 @@ def main():
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, screen_width)
-    
+
     # ----------------------------
 
     # cserver = CameraServer()
@@ -51,8 +51,31 @@ def main():
     # output = cserver.putVideo('Processed', width=screen_width, height=screen_height)
     # output.putFrame(output_image)
 
+    connectStatus = False
+
+    def listener(connected, info):
+        print(info, '; Connected=%s' % connected)
+        connectStatus = connected
+
     NetworkTables.initialize(server='10.22.64.2')
+
+    # check if the connection was successful
+    NetworkTables.addConnectionListener(
+        listener=listener, immediateNotify=True)
+
+    while (not connectStatus):
+        pass
+
     vision_nt = NetworkTables.getTable('ObjectVision')
+
+    vision_nt.getEntry(key="ready").clearPersistent()
+
+    readyStatus = vision_nt.getBoolean("ready", False) != True
+    while (readyStatus):
+        readyStatus = vision_nt.getBoolean("ready", False) != True
+
+    print("Got ready signal from robot, starting vision processing...")
+    vision_nt.putBoolean("processing", True)
 
     pipeline = GripPipeline()
 
