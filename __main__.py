@@ -1,5 +1,7 @@
 from cscore import CameraServer
-from networktables import NetworkTables
+# from networktables import NetworkTables
+
+from ntcore import NetworkTableInstance
 import numpy as np
 import cv2
 from grip import GripPipeline
@@ -36,7 +38,7 @@ def main():
     screen_width = 640
     screen_height = 480
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0)
 
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
@@ -44,11 +46,11 @@ def main():
 
     # ----------------------------
 
-    cserver = CameraServer()
-    cserver.startAutomaticCapture()
+    # cserver = CameraServer()
+    # cserver.startAutomaticCapture()
 
-    output = cserver.putVideo(
-        'Processed', width=screen_width, height=screen_height)
+    # output = cserver.putVideo(
+    #     'Processed', width=screen_width, height=screen_height)
 
     connectStatus = False
 
@@ -56,22 +58,26 @@ def main():
         print(info, '; Connected=%s' % connected)
         connectStatus = connected
 
-    NetworkTables.initialize(server='10.22.64.2')
+    ntinst = NetworkTableInstance.getDefault()
 
     # check if the connection was successful
-    NetworkTables.addConnectionListener(
-        listener=listener, immediateNotify=True)
+    # ntinst.addConnectionListener(
+    #     listener=listener, immediateNotify=True)
 
-    while (not connectStatus):
-        pass
+    # while (not connectStatus):
+    #     pass
 
-    vision_nt = NetworkTables.getTable('ObjectVision')
+    print("about to do stuff")
+    vision_nt = ntinst.getTable('ObjectVision')
 
     vision_nt.getEntry(key="ready").clearPersistent()
 
-    readyStatus = vision_nt.getBoolean("ready", False) != True
+    readyStatus = vision_nt.getBoolean("ready", False)
+
+    print("just did stuff, doing more soon")
     while (readyStatus):
-        readyStatus = vision_nt.getBoolean("ready", False) != True
+        print("checking status")
+        readyStatus = vision_nt.getBoolean("ready", False)
 
     print("Got ready signal from robot, starting vision processing...")
     vision_nt.putBoolean("processing", True)
@@ -80,7 +86,7 @@ def main():
 
     while True:
         _, frame = cap.read()
-        output.putFrame(frame)
+        # output.putFrame(frame)
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
