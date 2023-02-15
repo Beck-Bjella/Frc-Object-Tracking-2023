@@ -48,6 +48,7 @@ def main():
 
     cserver = CameraServer()
     cserver.startAutomaticCapture()
+    cserver.setResolution(screen_width, screen_height)
 
     output = cserver.putVideo(
         'Processed', width=screen_width, height=screen_height)
@@ -165,7 +166,7 @@ def main():
             )
 
         output.putFrame(frame)
-        
+
         # cv2.imshow('final', frame)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     break
