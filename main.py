@@ -1,4 +1,4 @@
-# from cscore import CameraServer
+from cscore import CameraServer
 from networktables import NetworkTables
 import numpy as np
 import cv2
@@ -44,12 +44,11 @@ def main():
 
     # ----------------------------
 
-    # cserver = CameraServer()
-    # cserver.startAutomaticCapture()
-    #
-    # input_stream = cserver.getVideo()
-    # output = cserver.putVideo('Processed', width=screen_width, height=screen_height)
-    # output.putFrame(output_image)
+    cserver = CameraServer()
+    cserver.startAutomaticCapture()
+
+    output = cserver.putVideo(
+        'Processed', width=screen_width, height=screen_height)
 
     connectStatus = False
 
@@ -81,6 +80,7 @@ def main():
 
     while True:
         _, frame = cap.read()
+        output.putFrame(frame)
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
