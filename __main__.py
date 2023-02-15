@@ -46,11 +46,11 @@ def main():
 
     # ----------------------------
 
-    # cserver = CameraServer()
-    # cserver.startAutomaticCapture()
+    cserver = CameraServer()
+    cserver.startAutomaticCapture()
 
-    # output = cserver.putVideo(
-    #     'Processed', width=screen_width, height=screen_height)
+    output = cserver.putVideo(
+        'Processed', width=screen_width, height=screen_height)
 
     connectStatus = False
 
@@ -86,7 +86,6 @@ def main():
 
     while True:
         _, frame = cap.read()
-        # output.putFrame(frame)
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
@@ -165,9 +164,11 @@ def main():
                 thickness=3
             )
 
+        output.putFrame(frame)
+        
         # cv2.imshow('final', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
 
 if __name__ == '__main__':
