@@ -165,7 +165,7 @@ def main():
                 thickness=3
             )
 
-        cv2.imshow('final', frame)
+        # cv2.imshow('final', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
