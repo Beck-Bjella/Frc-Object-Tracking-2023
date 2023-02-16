@@ -34,36 +34,59 @@ def get_line_length(line):
     return line.length
 
 
+connectStatus = False
+
+
+def listener(connected):
+    print('; Connected=%s' % connected)
+    connectStatus = True
+
+
 def main():
-    screen_width = 640
-    screen_height = 480
 
-    cap = cv2.VideoCapture(0)
+    # # print(os.popen("lsof /dev/video0").read())
+    input_screen_width = 160
+    input_screen_height = 90
 
-    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, screen_width)
+    # output_screen_width = 1280/4
+    # output_screen_height = 720/4
+    # output_screen_width = 320
+    # output_screen_height = 180
+    output_screen_width = 160
+    output_screen_height = 90
+
+    # cap = cv2.VideoCapture(0)
+
+    # cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, screen_width)
 
     # ----------------------------
 
-    cserver = CameraServer()
-    cserver.startAutomaticCapture()
-    cserver.setResolution(screen_width, screen_height)
+    cserver = CameraServer
+
+    camera = cserver.startAutomaticCapture("Camera", "/dev/video0")
+
+    camera.setResolution(width=input_screen_width,
+                         height=input_screen_height)
+
+    input_stream = cserver.getVideo()
+
+    input_template = np.zeros(shape=(input_screen_height, input_screen_width),
+                              dtype=np.uint8)
 
     output = cserver.putVideo(
-        'Processed', width=screen_width, height=screen_height)
-
-    connectStatus = False
-
-    def listener(connected, info):
-        print(info, '; Connected=%s' % connected)
-        connectStatus = connected
+        'Processed', width=output_screen_width, height=output_screen_height)
 
     ntinst = NetworkTableInstance.getDefault()
 
+    ntinst.startClient4("visionprocessor")
+    ntinst.setServerTeam(2264)
+    ntinst.startDSClient()
+
     # check if the connection was successful
     # ntinst.addConnectionListener(
-    #     listener=listener, immediateNotify=True)
+    #     callback=listener, immediate_notify=True)
 
     # while (not connectStatus):
     #     pass
@@ -71,14 +94,12 @@ def main():
     print("about to do stuff")
     vision_nt = ntinst.getTable('ObjectVision')
 
-    vision_nt.getEntry(key="ready").clearPersistent()
-
-    readyStatus = vision_nt.getBoolean("ready", False)
+    readyStatus = vision_nt.getEntry("ready").getBoolean(False)
 
     print("just did stuff, doing more soon")
     while (readyStatus):
         print("checking status")
-        readyStatus = vision_nt.getBoolean("ready", False)
+        readyStatus = vision_nt.getEntry("ready").getBoolean(False)
 
     print("Got ready signal from robot, starting vision processing...")
     vision_nt.putBoolean("processing", True)
@@ -86,7 +107,8 @@ def main():
     pipeline = GripPipeline()
 
     while True:
-        _, frame = cap.read()
+        # _, frame = cap.read()
+        frame_time, frame = input_stream.grabFrame(input_template)
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
@@ -118,6 +140,8 @@ def main():
             for p in hull:
                 hull_points.append((p[0][0], p[0][1]))
 
+            cv2.drawContours(frame, [hull], -1, (255, 0, 0), 2)
+
             lines = []
             for i in range(len(hull_points)):
                 first_point = hull_points[i]
@@ -145,27 +169,19 @@ def main():
                 (cone["center"][1] - cone["top"][1]), -(cone["center"][0] - cone["top"][0])) * (180/math.pi))
             cone["angle"] = angle
 
-            print("==========================")
             for key in cone:
                 if (type(cone[key]) == tuple):
                     vision_nt.putNumberArray(key, cone[key])
-                    print(f"{key}: {cone[key]}")
+                    # print(f"{key}: {cone[key]}")
                 else:
                     vision_nt.putNumber(key, cone[key])
-                    print(f"{key}: {cone[key]}")
+                    # print(f"{key}: {cone[key]}")
 
-            cv2.arrowedLine(frame, cone["center"], cone["top"], (0, 0, 0), 2)
-            cv2.putText(
-                img=frame,
-                text=f"{angle}",
-                org=cone["center"],
-                fontFace=cv2.FONT_HERSHEY_DUPLEX,
-                fontScale=2.5,
-                color=(255, 255, 255),
-                thickness=3
-            )
+            cv2.arrowedLine(
+                frame, cone["center"], cone["top"], (0, 0, 0), 4)
 
-        output.putFrame(frame)
+        output.putFrame(cv2.resize(
+            frame, (output_screen_width, output_screen_height)))
 
         # cv2.imshow('final', frame)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
