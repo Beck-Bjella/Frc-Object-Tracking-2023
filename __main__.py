@@ -1,6 +1,4 @@
 from cscore import CameraServer
-# from networktables import NetworkTables
-
 from ntcore import NetworkTableInstance
 import numpy as np
 import cv2
@@ -43,25 +41,11 @@ def listener(connected):
 
 
 def main():
+    input_screen_width = 320
+    input_screen_height = 180
 
-    # # print(os.popen("lsof /dev/video0").read())
-    input_screen_width = 160
-    input_screen_height = 90
-
-    # output_screen_width = 1280/4
-    # output_screen_height = 720/4
-    # output_screen_width = 320
-    # output_screen_height = 180
     output_screen_width = 160
     output_screen_height = 90
-
-    # cap = cv2.VideoCapture(0)
-
-    # cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, screen_height)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, screen_width)
-
-    # ----------------------------
 
     cserver = CameraServer
 
@@ -84,49 +68,35 @@ def main():
     ntinst.setServerTeam(2264)
     ntinst.startDSClient()
 
-    # check if the connection was successful
-    # ntinst.addConnectionListener(
-    #     callback=listener, immediate_notify=True)
-
-    # while (not connectStatus):
-    #     pass
-
-    print("about to do stuff")
     vision_nt = ntinst.getTable('ObjectVision')
 
     readyStatus = vision_nt.getEntry("ready").getBoolean(False)
 
-    print("just did stuff, doing more soon")
     while (readyStatus):
-        print("checking status")
         readyStatus = vision_nt.getEntry("ready").getBoolean(False)
 
-    print("Got ready signal from robot, starting vision processing...")
+    print("Running...")
     vision_nt.putBoolean("processing", True)
 
     pipeline = GripPipeline()
 
     while True:
-        # _, frame = cap.read()
-        frame_time, frame = input_stream.grabFrame(input_template)
+        _, frame = input_stream.grabFrame(input_template)
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
 
-        contour_data = []
+        best_contour = None
         for i, con in enumerate(contours):
             area = cv2.contourArea(con)
-            contour_data.append(ContourData(con, area))
 
-        best_contour = None
-        for data in contour_data:
             if best_contour == None:
-                best_contour = data
+                best_contour = ContourData(con, area)
 
-            if data.area > best_contour.area:
-                best_contour = data
-
-        if not best_contour == None:
+            if area > best_contour.area:
+                best_contour = ContourData(con, area)
+      
+        if best_contour:
             con = best_contour.con
             area = best_contour.area
 
@@ -165,27 +135,19 @@ def main():
 
             cone = {"center": center_point, "top": top_line.center, "baseP1": bottom_line.p1,
                     "baseC": bottom_line.center, "baseP2": bottom_line.p2}
-            angle = math.trunc(math.atan2(
-                (cone["center"][1] - cone["top"][1]), -(cone["center"][0] - cone["top"][0])) * (180/math.pi))
+            angle = math.trunc(math.atan2((cone["center"][1] - cone["top"][1]), -(cone["center"][0] - cone["top"][0])) * (180/math.pi))
             cone["angle"] = angle
 
             for key in cone:
                 if (type(cone[key]) == tuple):
                     vision_nt.putNumberArray(key, cone[key])
-                    # print(f"{key}: {cone[key]}")
                 else:
                     vision_nt.putNumber(key, cone[key])
-                    # print(f"{key}: {cone[key]}")
 
             cv2.arrowedLine(
                 frame, cone["center"], cone["top"], (0, 0, 0), 4)
 
-        output.putFrame(cv2.resize(
-            frame, (output_screen_width, output_screen_height)))
-
-        # cv2.imshow('final', frame)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+        output.putFrame(cv2.resize(frame, (output_screen_width, output_screen_height)))
 
 
 if __name__ == '__main__':
