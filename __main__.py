@@ -1,5 +1,5 @@
-from cscore import CameraServer
-from ntcore import NetworkTableInstance
+# from cscore import CameraServer
+# from ntcore import NetworkTableInstance
 import numpy as np
 import cv2
 from grip import GripPipeline
@@ -32,56 +32,72 @@ def get_line_length(line):
     return line.length
 
 
-connectStatus = False
+# connectStatus = False
 
 
-def listener(connected):
-    print('; Connected=%s' % connected)
-    connectStatus = True
+# def listener(connected):
+#     print('; Connected=%s' % connected)
+#     connectStatus = True
 
 
 def main():
-    input_screen_width = 320
-    input_screen_height = 180
+    # ===================== CAMERA CONSTANTS =====================
 
-    output_screen_width = 160
-    output_screen_height = 90
+    focal_length_px = 1430
+    camera_height_meters = 0.15875
+    camera_x_distance_meters = 0.46 # (forwards) NEEDS MEASURING
+    camera_y_distance_meters = 0.46 # (rightwards) NEEDS MEASURING
 
-    cserver = CameraServer
+    input_width = 160
+    input_height = 90
+    
+    input_cx = input_width / 2
+    input_cy = input_height / 2
 
-    camera = cserver.startAutomaticCapture("Camera", "/dev/video0")
+    output_width = 160
+    output_height = 90
 
-    camera.setResolution(width=input_screen_width,
-                         height=input_screen_height)
+    # ==========================================
 
-    input_stream = cserver.getVideo()
+    # cserver = CameraServer
 
-    input_template = np.zeros(shape=(input_screen_height, input_screen_width),
-                              dtype=np.uint8)
+    # camera = cserver.startAutomaticCapture("Camera", "/dev/video0")
 
-    output = cserver.putVideo(
-        'Processed', width=output_screen_width, height=output_screen_height)
+    # camera.setResolution(width=input_width, height=input_height)
+    # camera.setBrightness(0)
 
-    ntinst = NetworkTableInstance.getDefault()
+    # input_stream = cserver.getVideo()
 
-    ntinst.startClient4("visionprocessor")
-    ntinst.setServerTeam(2264)
-    ntinst.startDSClient()
+    # input_template = np.zeros(shape=(input_height, input_width),
+    #                           dtype=np.uint8)
 
-    vision_nt = ntinst.getTable('ObjectVision')
+    # output = cserver.putVideo(
+    #     'Processed', width=input_width, height=input_height)
 
-    readyStatus = vision_nt.getEntry("ready").getBoolean(False)
+    # ntinst = NetworkTableInstance.getDefault()
 
-    while (readyStatus):
-        readyStatus = vision_nt.getEntry("ready").getBoolean(False)
+    # ntinst.startClient4("visionprocessor")
+    # ntinst.setServerTeam(2264)
+    # ntinst.startDSClient()
+
+    # vision_nt = ntinst.getTable('ObjectVision')
+
+    # readyStatus = vision_nt.getEntry("ready").getBoolean(False)
+
+    # while not readyStatus:
+    #     readyStatus = vision_nt.getEntry("ready").getBoolean(False)
 
     print("Running...")
-    vision_nt.putBoolean("processing", True)
+    # vision_nt.putBoolean("processing", True)
 
     pipeline = GripPipeline()
 
+    vid = cv2.VideoCapture(0)
+    
+
     while True:
-        _, frame = input_stream.grabFrame(input_template)
+        # _, frame = input_stream.grabFrame(input_template)
+        _, frame = vid.read()
 
         pipeline.process(frame)
         contours = pipeline.find_contours_output
@@ -90,65 +106,46 @@ def main():
         for i, con in enumerate(contours):
             area = cv2.contourArea(con)
 
-            if best_contour == None:
+            if best_contour is None:
                 best_contour = ContourData(con, area)
 
             if area > best_contour.area:
                 best_contour = ContourData(con, area)
-      
+
         if best_contour:
             con = best_contour.con
-            area = best_contour.area
 
             M = cv2.moments(con)
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
-            center_point = (cX, cY)
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
 
-            hull = cv2.convexHull(con)
-            hull_points = []
-            for p in hull:
-                hull_points.append((p[0][0], p[0][1]))
+            cv2.circle(frame, (cx, cy), 10, (0, 0, 255), 20)
 
-            cv2.drawContours(frame, [hull], -1, (255, 0, 0), 2)
+            print(cx, cy)
 
-            lines = []
-            for i in range(len(hull_points)):
-                first_point = hull_points[i]
+            camera_yaw = math.atan2(focal_length_px, cx - input_cx)
+            pitch = math.atan2(focal_length_px, cy - input_cy)
+            distance = camera_height_meters / math.tan(pitch)
 
-                if i == len(hull_points) - 1:
-                    second_point = hull_points[0]
-                else:
-                    second_point = hull_points[i + 1]
+            # robot_yaw = math.atan2(camera_y_distance_meters + distance * math.sin(camera_yaw), camera_x_distance_meters + distance * math.sin(camera_yaw))
 
-                lines.append(LineData(first_point, second_point))
+            cv2.putText(frame, f"CAMERA_YAW: {camera_yaw * (180/math.pi)}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"PITCH: {pitch * (180/math.pi)}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, f"DISATNCE: {distance}", (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            # cv2.putText(frame, f"ROBOT_YAW: {robot_yaw}", (10, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-            lines.sort(reverse=True, key=get_line_length)
-            sides = lines[0:2]
+            # vision_nt.putNumber("camera_yaw", camera_yaw)
+            # vision_nt.putNumber("pitch", pitch)
+            # vision_nt.putNumber("distance", distance)
+            # vision_nt.putNumber("robot_yaw", robot_yaw)
 
-            cross_sections = [LineData(sides[0].p1, sides[1].p2), LineData(
-                sides[0].p2, sides[1].p1)]
-            cross_sections.sort(reverse=True, key=get_line_length)
+        cv2.imshow('frame', frame)
 
-            bottom_line = cross_sections[0]
-            top_line = cross_sections[1]
 
-            cone = {"center": center_point, "top": top_line.center, "baseP1": bottom_line.p1,
-                    "baseC": bottom_line.center, "baseP2": bottom_line.p2}
-            angle = math.trunc(math.atan2((cone["center"][1] - cone["top"][1]), -(cone["center"][0] - cone["top"][0])) * (180/math.pi))
-            cone["angle"] = angle
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-            for key in cone:
-                if (type(cone[key]) == tuple):
-                    vision_nt.putNumberArray(key, cone[key])
-                else:
-                    vision_nt.putNumber(key, cone[key])
-
-            cv2.arrowedLine(
-                frame, cone["center"], cone["top"], (0, 0, 0), 4)
-
-        output.putFrame(cv2.resize(frame, (output_screen_width, output_screen_height)))
-
+        # output.putFrame(cv2.resize(frame, (output_width, output_height)))
 
 if __name__ == '__main__':
     main()
