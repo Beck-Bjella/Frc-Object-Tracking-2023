@@ -36,12 +36,12 @@ def main():
     output_height = 90
 
     # ==========================================
-
+    
     camera = CameraServer.startAutomaticCapture("Camera", "/dev/video0")
     camera.setResolution(width=input_width, height=input_height)
 
-    input_stream = cserver.getVideo()
-    output_steam = cserver.putVideo(
+    input_stream = CameraServer.getVideo()
+    output_steam = CameraServer.putVideo(
         'Processed', width=input_width, height=input_height)
 
     input_template = np.zeros(
