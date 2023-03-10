@@ -20,15 +20,15 @@ def main():
     input_width = 640
     input_height = 480
 
-    input_half_width = 320
-    input_half_height = 240
+    input_half_width = int(input_width/2)
+    input_half_height = int(input_height/2)
     
     # camera_height_meters = 0.89535
     # camera_x_distance_meters = 0
     # camera_y_distance_meters = 0
     camera_pitch = math.radians(0)
 
-    max_camera_yaw = math.radians(24.5)
+    max_camera_yaw = math.radians(23.97)
     focal_length_px = input_half_width / math.tan(max_camera_yaw)
     
     output_width = 160
