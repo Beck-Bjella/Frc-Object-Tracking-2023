@@ -29,7 +29,7 @@ def main():
     # camera_y_distance_meters = 0
     camera_pitch = math.radians(0)
 
-    max_camera_yaw = math.radians(47.93665)
+    max_camera_yaw = math.radians(23.97)
     focal_length_px = input_half_width / math.tan(max_camera_yaw)
 
     output_width = 180
@@ -37,9 +37,7 @@ def main():
 
     # ==========================================
 
-    cserver = CameraServer
-
-    camera = cserver.startAutomaticCapture("Camera", "/dev/video0")
+    camera = CameraServer.startAutomaticCapture("Camera", "/dev/video0")
     camera.setResolution(width=input_width, height=input_height)
 
     input_stream = cserver.getVideo()
