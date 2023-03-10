@@ -3,6 +3,7 @@ from ntcore import NetworkTableInstance
 import numpy as np
 import cv2
 from cones import ConePipeline
+from cubes import CubePipeline
 import math
 
 
@@ -36,7 +37,7 @@ def main():
     output_height = 90
 
     # ==========================================
-    
+
     camera = CameraServer.startAutomaticCapture("Camera", "/dev/video0")
     camera.setResolution(width=input_width, height=input_height)
 
@@ -63,6 +64,7 @@ def main():
     vision_nt.putBoolean("processing", True)
 
     cone_pipeline = ConePipeline()
+    cube_pipeline = CubePipeline()
 
     while True:
         _, frame = input_stream.grabFrame(input_template)
@@ -70,8 +72,13 @@ def main():
         cone_pipeline.process(frame)
         cone_contours = cone_pipeline.find_contours_output
 
+        cube_pipeline.process(frame)
+        cube_contours = cube_pipeline.find_contours_output
+
+        all_contours = cone_contours + cube_contours
+
         best_contour = None
-        for i, con in enumerate(cone_contours):
+        for i, con in enumerate(all_contours):
             area = cv2.contourArea(con)
 
             if best_contour is None:
@@ -93,25 +100,14 @@ def main():
             yaw = math.atan2(cr_cone[0], focal_length_px)
             pitch = math.atan2(cr_cone[1], focal_length_px) - camera_pitch
 
-        # distance = camera_height_meters/math.tan(pitch)
-        # robot_yaw = math.atan2(camera_y_distance_meters + distance * math.sin(camera_yaw), camera_x_distance_meters + distance * math.sin(camera_yaw))
-
-        # cv2.putText(frame, f"YAW: {yaw * (180/math.pi)}", (10, 40),
-        #             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        # cv2.putText(frame, f"PITCH: {pitch * (180/math.pi)}", (10, 90),
-        #             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        # cv2.putText(frame, f"DISATNCE: {distance}", (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-        # cv2.putText(frame, f"ROBOT_YAW: {robot_yaw}", (10, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            # distance = camera_height_meters/math.tan(pitch)
+            # robot_yaw = math.atan2(camera_y_distance_meters + distance * math.sin(camera_yaw), camera_x_distance_meters + distance * math.sin(camera_yaw))
 
             vision_nt.putNumber("yaw", yaw)
             vision_nt.putNumber("pitch", pitch)
 
-        # vision_nt.putNumber("distance", distance)
-        # vision_nt.putNumber("robot_yaw", robot_yaw)
-
-        # cv2.imshow('frame', frame)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+            # vision_nt.putNumber("distance", distance)
+            # vision_nt.putNumber("robot_yaw", robot_yaw)
 
         output_steam.putFrame(cv2.resize(frame, (output_width, output_height)))
 
