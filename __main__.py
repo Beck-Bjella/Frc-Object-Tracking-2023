@@ -19,8 +19,8 @@ class ContourData:
 def main():
     # ===================== CONSTANTS =====================
 
-    input_width = 180
-    input_height = 90
+    input_width = 320
+    input_height = 180
 
     input_half_width = int(input_width / 2)
     input_half_height = int(input_height / 2)
@@ -33,8 +33,8 @@ def main():
     max_camera_yaw = math.radians(23.97)
     focal_length_px = input_half_width / math.tan(max_camera_yaw)
 
-    output_width = 180
-    output_height = 90
+    output_width = 320
+    output_height = 180
 
     # ==========================================
 
@@ -64,7 +64,7 @@ def main():
     vision_nt.putBoolean("processing", True)
 
     cone_pipeline = ConePipeline()
-    cube_pipeline = CubePipeline()
+    # cube_pipeline = CubePipeline()
 
     while True:
         _, frame = input_stream.grabFrame(input_template)
@@ -72,10 +72,10 @@ def main():
         cone_pipeline.process(frame)
         cone_contours = cone_pipeline.find_contours_output
 
-        cube_pipeline.process(frame)
-        cube_contours = cube_pipeline.find_contours_output
+        # cube_pipeline.process(frame)
+        # cube_contours = cube_pipeline.find_contours_output
 
-        all_contours = cone_contours + cube_contours
+        all_contours = cone_contours  # + cube_contours
 
         best_contour = None
         for i, con in enumerate(all_contours):
