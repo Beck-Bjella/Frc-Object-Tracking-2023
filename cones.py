@@ -12,9 +12,13 @@ class ConePipeline:
         """initializes all values to presets or None if need to be set
         """
 
-        self.__hsv_threshold_hue = [4.519774145999198, 54.35947392393444]
-        self.__hsv_threshold_saturation = [135.92474317779423, 255.0]
-        self.__hsv_threshold_value = [79.91098188527332, 255.0]
+        # self.__hsv_threshold_hue = [4.519774145999198, 54.35947392393444]
+        # self.__hsv_threshold_saturation = [135.92474317779423, 255.0]
+        # self.__hsv_threshold_value = [79.91098188527332, 255.0]
+        
+        self.__hsv_threshold_hue = [19.0, 32.0]
+        self.__hsv_threshold_saturation = [79.0, 255.0]
+        self.__hsv_threshold_value = [48, 255.0]
 
         self.hsv_threshold_output = None
 
