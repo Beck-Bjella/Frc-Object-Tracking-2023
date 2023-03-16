@@ -105,10 +105,12 @@ def main():
 
             vision_nt.putNumber("yaw", yaw)
             vision_nt.putNumber("pitch", pitch)
+            vision_nt.putBoolean("detected", True)
 
             # vision_nt.putNumber("distance", distance)
             # vision_nt.putNumber("robot_yaw", robot_yaw)
-
+        else: 
+            vision_nt.putBoolean("detected", False)
         output_steam.putFrame(cv2.resize(frame, (output_width, output_height)))
 
 
