@@ -30,11 +30,17 @@ def main():
     # camera_y_distance_meters = 0
     camera_pitch = math.radians(0)
 
-    max_camera_yaw = math.radians(23.97)
+    max_camera_yaw = 0.7269648819567573658/2
     focal_length_px = input_half_width / math.tan(max_camera_yaw)
 
     output_width = 320
     output_height = 180
+
+    camera_matrix = np.array([1.418385730011849546e+03,0.000000000000000000e+00,9.208310160615919813e+02],
+                             [0.000000000000000000e+00,1.419618382821758132e+03,5.148944628744075089e+02],
+                             [0.000000000000000000e+00,0.000000000000000000e+00,1.000000000000000000e+00])
+    distortion_coefficients = np.array(-4.423424326140373286e-01,2.665611712922174026e-01,1.114619276960555905e-03,-2.671075682655178556e-04,-1.029716314732827681e-01)
+    
 
     # ==========================================
 
@@ -68,6 +74,9 @@ def main():
 
     while True:
         _, frame = input_stream.grabFrame(input_template)
+        frame = cv2.undistort(
+        frame, camera_matrix, distortion_coefficients, None, camera_matrix
+)
 
         cone_pipeline.process(frame)
         cone_contours = cone_pipeline.find_contours_output
