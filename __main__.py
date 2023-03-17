@@ -30,8 +30,9 @@ def main():
     # camera_y_distance_meters = 0
     camera_pitch = math.radians(0)
 
-    max_camera_yaw = 0.7269648819567573658/2
-    focal_length_px = input_half_width / math.tan(max_camera_yaw)
+
+    # max_camera_yaw = 0.7269648819567573658/2
+    # focal_length_px = input_half_width / math.tan(max_camera_yaw)
 
     output_width = 320
     output_height = 180
@@ -41,6 +42,10 @@ def main():
                              [0.000000000000000000e+00,0.000000000000000000e+00,1.000000000000000000e+00])
     distortion_coefficients = np.array(-4.423424326140373286e-01,2.665611712922174026e-01,1.114619276960555905e-03,-2.671075682655178556e-04,-1.029716314732827681e-01)
     
+
+    fov_x, fox_y, _ = cv2.calibrationMatrixValues(cameraMatrix= camera_matrix,imageSize= [1920,1080],apertureWidth=0.0029*1920,apertureHeight=0.0029*1080)
+    max_camera_yaw = fov_x * PI/180/2
+    focal_length_px = input_half_width / math.tan(max_camera_yaw)
 
     # ==========================================
 
